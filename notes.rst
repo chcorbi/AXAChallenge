@@ -12,3 +12,6 @@ Notes: AXA Challenge
 [?] choisir comment faire la cross-validation
 [!] favoriser la prédiciton à la hausse, prendre là LinExp loss function
 [!] toujours prendre note des choix et des avancées fait, pour l'exposé final
+[!] ne pas faire du ML au sens strict,
+    max de la semaine (de l'année dernière) + la tendance
+[!] 'renault', le mettre à zéro
