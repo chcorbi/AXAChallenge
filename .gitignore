@@ -1,5 +1,5 @@
-*.swp
-*.swo
+*.sw*
 *.pyc
+*.xlsx#
 data/*
 .ipynb_checkpoints/*
