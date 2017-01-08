@@ -2,10 +2,8 @@ import csv
 import pandas as pd
 import numpy as np
 import os.path as osp
-from itertools import izip
 
-from predictors import *
-from constants import ASSIGNEMENT, MONTH, WEEK
+from constants import ASSIGNEMENT
 
 
 def get_raw_data(data_path, date_regex, max_lines=None):
@@ -73,21 +71,13 @@ def preprocessing(X_df):
     return X_df
 
 
-def make_prediction(dates):
-    """Create a prediction for the given date.
+def load_all_data():
+    """Helper to get the three preprocessed years.
     """
     X_df_2011 = pd.DataFrame.from_csv("datasets/2011.csv")
     X_df_2012 = pd.DataFrame.from_csv("datasets/2012.csv")
     X_df_2013 = pd.DataFrame.from_csv("datasets/2013.csv")
-    X_df = pd.concat([X_df_2011, X_df_2012, X_df_2013], axis=0)
-    pred = []
-    pred.append(pred_last_week(dates, X_df))
-    pred.append(pred_evolast_week(dates, X_df))
-    pred.append(pred_last_year(dates, X_df))
-    pred.append(pred_evolast_year(dates, X_df))
-    concat_pred = pd.concat(pred, axis=0)
-    concat_pred *= 1.22
-    return concat_pred.groupby(concat_pred.index).max()
+    return pd.concat([X_df_2011, X_df_2012, X_df_2013], axis=0)
 
 
 def make_submission(sub, filename="submission.txt"):

@@ -1,0 +1,87 @@
+import numpy as np
+import pandas as pd
+from sklearn.base import BaseEstimator
+from xgboost import XGBRegressor
+
+from constants import ASSIGNEMENT
+from toolbox import load_all_data
+from predictors import pred_same_last_week, pred_reg_two_weeks, \
+                       pred_same_last_year, pred_reg_two_years
+
+
+class Regressor(BaseEstimator):
+    def __init__(self):
+        """Load all the data during the init.
+        """
+        self.coef_first_preds = 1.22
+        self.coef_final_preds = 1.18
+        self.X_df = load_all_data()
+        self.regs = []
+
+    def _fit_simple_predictors_(self, dates):
+        """Fit the simple predictor on self.X_df.
+        """
+        pred = []
+        pred.append(pred_same_last_week(dates, self.X_df))
+        pred.append(pred_reg_two_weeks(dates, self.X_df))
+        pred.append(pred_same_last_year(dates, self.X_df))
+        pred.append(pred_reg_two_years(dates, self.X_df))
+        return pd.concat(pred, axis=1)
+
+    def preprocess_data(self, df, full=False):
+        """Enhance features.
+        """
+        if full:
+            df['year'] = df.index.year
+            df['month'] = df.index.month
+            df['day'] = df.index.day
+            df['hour'] = df.index.hour
+            df['min'] = df.index.minute
+            MINHOUR, MAXHOUR = 7, 19
+            is_day = (df.index.hour >= MINHOUR) * (df.index.hour < MAXHOUR)
+            df['is_day'] = is_day
+            is_we = ((df.index.dayofweek == 6)+(df.index.dayofweek == 5)).astype(bool)
+            df['is_we'] = is_we
+        else:
+            df['epoch'] = df.index.astype(int)
+        return df
+
+    def fit(self, dates):
+        """Fit all the intern predictors.
+        """
+        concat_pred = self._fit_simple_predictors_(dates)
+        regs = []
+        features_full = ['Week','Evol_week','Year','Evol_year', 'year', 'month',
+                         'day', 'hour' ,'min', 'is_day', 'is_we', 'y_true']
+        features = ['Week','Evol_week','Year','Evol_year', 'epoch', 'y_true']
+        for assign in ASSIGNEMENT:
+            fit_dataset = self.preprocess_data(concat_pred[assign])
+            fit_dataset['y_true'] = self.X_df[assign]
+            fit_dataset.columns = features
+            fit_dataset = fit_dataset[np.isfinite(fit_dataset['y_true'])]
+            X_fit = fit_dataset.drop(['y_true'], axis=1)
+            y_fit = fit_dataset['y_true']
+            reg = XGBRegressor(n_estimators=1000, learning_rate=0.2)
+            reg.fit(X_fit, y_fit)
+            self.regs.append(reg)
+
+    def predict(self, dates):
+        """Create a prediction for the given date.
+        """
+        concat_pred = self._fit_simple_predictors_(dates) * self.coef_first_preds
+        tot_pred = []
+        features_full = ['Week','Evol_week','Year','Evol_year', 'year', 'month',
+                         'day', 'hour' ,'min', 'is_day', 'is_we']
+        features = ['Week','Evol_week','Year','Evol_year', 'epoch']
+        for i, assign in enumerate(ASSIGNEMENT):
+            pred_dataset = self.preprocess_data(concat_pred[assign])
+            pred_dataset.columns = features
+            y_pred = self.regs[i].predict(pred_dataset)
+            y_pred[y_pred < 0] = 0
+            y_pred = y_pred.astype(int)
+            tot_pred.append(pd.DataFrame(y_pred, index=dates))
+        concat_y_pred = pd.concat(tot_pred, axis=1)
+        concat_y_pred *= self.coef_final_preds
+        concat_y_pred = pd.DataFrame(concat_y_pred, index=dates)
+        concat_y_pred.columns = ASSIGNEMENT
+        return concat_y_pred

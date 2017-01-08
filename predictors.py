@@ -17,7 +17,7 @@ def get_last(date, X_df, period_type, nlast=1, nbtry=4):
         return tmp # ok return
 
 
-def pred_last_week(dates, X_df):
+def pred_same_last_week(dates, X_df):
     """Return the same prediction than last week.
     """
     pred = []
@@ -26,7 +26,7 @@ def pred_last_week(dates, X_df):
     return pd.DataFrame(pred, index=dates)
 
 
-def pred_evolast_week(dates, X_df):
+def pred_reg_two_weeks(dates, X_df):
     """Return the same prediction than last year.
     """
     pred = []
@@ -38,7 +38,7 @@ def pred_evolast_week(dates, X_df):
     return pd.DataFrame(pred, index=dates)
 
 
-def pred_last_year(dates, X_df):
+def pred_same_last_year(dates, X_df):
     """Return the same prediction than last year.
     """
     pred = []
@@ -47,7 +47,7 @@ def pred_last_year(dates, X_df):
     return pd.DataFrame(pred, index=dates)
 
 
-def pred_evolast_year(dates, X_df):
+def pred_reg_two_years(dates, X_df):
     """Return the same prediction than last year.
     """
     pred = []
