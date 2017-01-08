@@ -1,10 +1,12 @@
 import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator
-from xgboost import XGBRegressor
+from sklearn.ensemble import GradientBoostingRegressor  
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import make_scorer
 
 from constants import ASSIGNEMENT
-from toolbox import load_all_data
+from toolbox import load_all_data, get_error_dfs
 from predictors import pred_same_last_week, pred_reg_two_weeks, \
                        pred_same_last_year, pred_reg_two_years
 
@@ -14,7 +16,7 @@ class Regressor(BaseEstimator):
         """Load all the data during the init.
         """
         self.coef_first_preds = 1.22
-        self.coef_final_preds = 1.18
+        self.coef_final_preds = 1.16
         self.X_df = load_all_data()
         self.regs = []
 
@@ -61,7 +63,8 @@ class Regressor(BaseEstimator):
             fit_dataset = fit_dataset[np.isfinite(fit_dataset['y_true'])]
             X_fit = fit_dataset.drop(['y_true'], axis=1)
             y_fit = fit_dataset['y_true']
-            reg = XGBRegressor(n_estimators=1000, learning_rate=0.2)
+            reg = GradientBoostingRegressor(n_estimators=1000,                             
+                learning_rate=0.2, random_state=42)             
             reg.fit(X_fit, y_fit)
             self.regs.append(reg)
 
@@ -85,3 +88,36 @@ class Regressor(BaseEstimator):
         concat_y_pred = pd.DataFrame(concat_y_pred, index=dates)
         concat_y_pred.columns = ASSIGNEMENT
         return concat_y_pred
+    
+    def gridsearch(self,dates,param_grid, verbose=1):
+        """Create a prediction for the given date.
+        """
+        concat_pred = self._fit_simple_predictors_(dates) * self.coef_first_preds
+        features_full = ['Week','Evol_week','Year','Evol_year', 'year', 'month',
+                         'day', 'hour' ,'min', 'is_day', 'is_we']
+        features = ['Week','Evol_week','Year','Evol_year', 'epoch', 'y_true']        
+        scoresgridreg={}
+        for i,assign in enumerate(ASSIGNEMENT):
+            i+=1
+            print "--- Gridsearching %d/28 : %s" % (i, assign)
+            fit_dataset = self.preprocess_data(concat_pred[assign])
+            fit_dataset['y_true'] = self.X_df[assign]
+            fit_dataset.columns = features
+            fit_dataset = fit_dataset[np.isfinite(fit_dataset['y_true'])]
+            X_fit = fit_dataset.drop(['y_true'], axis=1)
+            y_fit = fit_dataset['y_true']
+            reg = GradientBoostingRegressor(n_estimators=1000,                             
+                learning_rate=0.2, random_state=42)               
+            grid = GridSearchCV(reg, param_grid=param_grid, scoring=make_scorer(get_error_dfs), verbose=verbose)
+            grid.fit(X_fit, y_fit)
+            scoresgridreg[assign]=grid.best_params_, grid.best_score_
+        tot_score=0
+        print "============================================================================"
+        print "                              GRID SEARCH                                   "
+        print "----------------------------------------------------------------------------"
+        for assign in ASSIGNEMENT:
+            print assign,' : ', scoresgridreg[assign][0]
+            tot_score+=scoresgridreg[assign][1]
+        print "----------------------------------------------------------------------------"
+        print  "**************SCORE**************: ",tot_score
+
