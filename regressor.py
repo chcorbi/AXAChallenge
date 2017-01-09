@@ -16,7 +16,7 @@ class Regressor(BaseEstimator):
         """Load all the data during the init.
         """
         self.coef_first_preds = 1.22
-        self.coef_final_preds = 1.16
+        self.coef_final_preds = 1.17
         self.X_df = load_all_data()
         self.regs = []
 
